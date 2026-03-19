@@ -1,0 +1,13 @@
+node_modules
+dist
+.vercel
+*.log
+.DS_Store
+*.pyc
+app.jsx.backup
+rewrite.py
+build_error.txt
+vercel-list-cmd.txt
+vercel-list.txt
+vercel-output.txt
+build-error.log
