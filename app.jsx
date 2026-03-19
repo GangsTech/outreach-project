@@ -172,6 +172,10 @@ function App() {
     const { showBanner, isIOS, isInstalled, install, dismiss } = useInstallPrompt();
 
     useEffect(() => {
+        if ('Notification' in window && Notification.permission !== 'granted') {
+            Notification.requestPermission();
+        }
+
         const unsubscribe = onAuthStateChanged(auth, (user) => {
             if (user) {
                 setCurrentUser(user);
@@ -265,6 +269,26 @@ function App() {
 
                     if (diffMinutes > 0 && diffMinutes <= leadTime && !notifiedVisits.current.has(visit.id)) {
                         setActiveAlarmVisit(visit);
+                        notifiedVisits.current.add(visit.id);
+
+                        // Trigger Background Notification
+                        if (Notification.permission === 'granted' && navigator.serviceWorker) {
+                            navigator.serviceWorker.ready.then(registration => {
+                                const leadLabel = leadTime >= 60 
+                                    ? `${leadTime / 60} hour${leadTime > 60 ? 's' : ''}` 
+                                    : `${leadTime} minutes`;
+                                
+                                registration.showNotification(`🚨 ALARM: Visit with ${visit.customerName}`, {
+                                    body: `Starting in ${leadLabel} at ${visit.location}! Tap to dismiss.`,
+                                    icon: '/pwa-192x192.png',
+                                    badge: '/pwa-192x192.png',
+                                    tag: `visit-${visit.id}`,
+                                    requireInteraction: true,
+                                    vibrate: [200, 100, 200, 100, 200, 100, 400],
+                                    data: { visitId: visit.id }
+                                });
+                            });
+                        }
                     }
                 }
             });
