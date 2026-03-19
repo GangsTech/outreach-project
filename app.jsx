@@ -250,7 +250,10 @@ function App() {
         if (!currentUser) return;
         const intervalId = setInterval(() => {
             const now = new Date();
-            const today = now.toISOString().split('T')[0];
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const today = `${year}-${month}-${day}`;
 
             visits.forEach(visit => {
                 if (visit.date === today && visit.status === 'pending') {
@@ -381,7 +384,12 @@ function App() {
 }
 
 function Dashboard({ visits, onUpdateStatus, onEditVisit, onDeleteVisit, username }) {
-    const today = new Date().toISOString().split('T')[0];
+    const localDate = new Date();
+    const year = localDate.getFullYear();
+    const month = String(localDate.getMonth() + 1).padStart(2, '0');
+    const day = String(localDate.getDate()).padStart(2, '0');
+    const today = `${year}-${month}-${day}`;
+
     const todayVisits = (visits || []).filter(v => v.date === today);
     const pendingVisits = todayVisits.filter(v => v.status === 'pending');
     const completedVisits = todayVisits.filter(v => v.status === 'completed');
@@ -634,7 +642,12 @@ function AddVisit({ onSave, visitToEdit }) {
 }
 
 function Reports({ visits }) {
-    const today = new Date().toISOString().split('T')[0];
+    const localDate = new Date();
+    const year = localDate.getFullYear();
+    const month = String(localDate.getMonth() + 1).padStart(2, '0');
+    const day = String(localDate.getDate()).padStart(2, '0');
+    const today = `${year}-${month}-${day}`;
+
     const todayVisits = visits.filter(v => v.date === today);
     const totalCompleted = visits.filter(v => v.status === 'completed').length;
 
