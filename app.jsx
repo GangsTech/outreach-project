@@ -19,7 +19,7 @@ function useInstallPrompt() {
             return;
         }
         const dismissed = localStorage.getItem('pwa_install_dismissed');
-        if (dismissed && Date.now() - parseInt(dismissed) < 24 * 60 * 60 * 1000) return;
+        // if (dismissed && Date.now() - parseInt(dismissed) < 24 * 60 * 60 * 1000) return;
         const ua = window.navigator.userAgent;
         const ios = /iphone|ipad|ipod/i.test(ua);
         setIsIOS(ios);
