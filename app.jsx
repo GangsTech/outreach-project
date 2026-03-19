@@ -522,8 +522,11 @@ function AddVisit({ onSave, visitToEdit }) {
     });
     const [isRecording, setIsRecording] = useState(false);
 
+    const [isSaving, setIsSaving] = useState(false);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setIsSaving(true);
         const data = {
             ...formData,
             reminderMinutes: Number(formData.reminderMinutes),
@@ -538,8 +541,11 @@ function AddVisit({ onSave, visitToEdit }) {
                 await addDoc(collection(db, "visits"), { ...data, status: 'pending' });
             }
             onSave();
-        } catch (e) {
-            console.error("Error saving visit", e);
+        } catch (err) {
+            console.error("Error saving visit", err);
+            alert("Error saving: " + err.message + "\n\nMake sure your Firestore Rules are set to 'allow read, write: if request.auth != null;'");
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -614,7 +620,9 @@ function AddVisit({ onSave, visitToEdit }) {
                         <option value={2880}>2 days before</option>
                     </select>
                 </div>
-                <button type="submit" className="btn-primary mt-sm">{visitToEdit ? 'Save Changes' : 'Save Appointment'}</button>
+                <button type="submit" className="btn-primary mt-sm" disabled={isSaving}>
+                    {isSaving ? 'Saving...' : (visitToEdit ? 'Save Changes' : 'Save Appointment')}
+                </button>
             </form>
         </div>
     );
