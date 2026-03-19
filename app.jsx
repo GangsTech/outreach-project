@@ -284,8 +284,12 @@ function App() {
                                     badge: '/pwa-192x192.png',
                                     tag: `visit-${visit.id}`,
                                     requireInteraction: true,
-                                    vibrate: [200, 100, 200, 100, 200, 100, 400],
-                                    data: { visitId: visit.id }
+                                    vibrate: [500, 110, 500, 110, 450, 110, 200, 110, 170, 40, 450, 110, 200, 110, 170, 40],
+                                    data: { visitId: visit.id },
+                                    actions: [
+                                        { action: 'view', title: 'Open App', icon: '📱' },
+                                        { action: 'close', title: 'Dismiss', icon: '❌' }
+                                    ]
                                 });
                             });
                         }
@@ -450,7 +454,10 @@ function Dashboard({ visits, onUpdateStatus, onEditVisit, onDeleteVisit, usernam
                             <div className="visit-actions">
                                 <button className="btn-icon" onClick={() => onEditVisit(visit.id)} title="Edit">✏️</button>
                                 <button className="btn-icon" onClick={() => { if (visit.phone) window.location.href = `tel:${visit.phone.replace(/\D/g, '')}`; }} title="Call">📞</button>
-                                <button className="btn-icon" onClick={() => window.open(`https://wa.me/${visit.phone ? visit.phone.replace(/\D/g, '') : ''}?text=${encodeURIComponent(`Hello ${visit.customerName}, this is a reminder for your land visit.`)}`, '_blank')} title="WhatsApp">💬</button>
+                                <button className="btn-icon" onClick={() => {
+                                    const msg = `Hello ${visit.customerName}! This is a reminder for our meeting today at ${visit.time} at ${visit.location}. See you there!`;
+                                    window.open(`https://wa.me/${visit.phone ? visit.phone.replace(/\D/g, '') : ''}?text=${encodeURIComponent(msg)}`, '_blank');
+                                }} title="WhatsApp">💬</button>
                                 <button className="btn-primary small" onClick={() => onUpdateStatus(visit.id, 'completed')}>Complete</button>
                                 <button className="btn-icon btn-delete" onClick={() => onDeleteVisit(visit.id)} title="Delete">🗑️</button>
                             </div>
@@ -490,6 +497,10 @@ function Visits({ visits, onUpdateStatus, onEditVisit, onDeleteVisit }) {
                                 Mark {visit.status === 'pending' ? 'Completed' : 'Pending'}
                             </button>
                             <div className="flex-row gap-xs" style={{ marginLeft: 'auto' }}>
+                                <button className="btn-icon" onClick={() => {
+                                    const msg = `Hello ${visit.customerName}! This is a reminder for our meeting on ${visit.date} at ${visit.time} at ${visit.location}.`;
+                                    window.open(`https://wa.me/${visit.phone ? visit.phone.replace(/\D/g, '') : ''}?text=${encodeURIComponent(msg)}`, '_blank');
+                                }} title="WhatsApp">💬</button>
                                 <button className="btn-icon" onClick={() => onEditVisit(visit.id)} title="Edit">✏️</button>
                                 <button className="btn-icon btn-delete" onClick={() => onDeleteVisit(visit.id)} title="Delete">🗑️</button>
                             </div>

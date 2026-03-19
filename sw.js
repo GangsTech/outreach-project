@@ -58,8 +58,14 @@ self.addEventListener('push', (event) => {
             self.registration.showNotification(data.title || 'Reminder', {
                 body: data.body,
                 icon: '/pwa-192x192.png',
+                badge: '/pwa-192x192.png',
                 data: data.data,
                 requireInteraction: true,
+                vibrate: [500, 110, 500, 110, 450, 110, 200, 110, 170, 40, 450, 110, 200, 110, 170, 40],
+                actions: [
+                    { action: 'view', title: 'Open App' },
+                    { action: 'dismiss', title: 'Dismiss' }
+                ]
             })
         );
     }
