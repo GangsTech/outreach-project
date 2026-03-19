@@ -192,6 +192,9 @@ function App() {
                 ...doc.data()
             }));
             setVisits_raw(visitsData);
+        }, (err) => {
+            console.error("Firestore read error:", err);
+            alert("Error reading appointments: " + err.message);
         });
         return () => unsubscribe();
     }, [currentUser]);
