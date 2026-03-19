@@ -185,10 +185,9 @@ function App() {
 
     useEffect(() => {
         if (!currentUser) return;
-        // Temporarily simplifying query to see if ANY visits exist in the collection
-        const q = query(collection(db, "visits")); 
+        // Privacy filter: only show visits belonging to the current user
+        const q = query(collection(db, "visits"), where("userId", "==", currentUser.uid)); 
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            console.log("Visits snapshot received. Count:", snapshot.size);
             const visitsData = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
@@ -397,7 +396,7 @@ function Dashboard({ visits, onUpdateStatus, onEditVisit, onDeleteVisit, usernam
     return (
         <div className="dashboard">
             <h2 className="section-title">Hello, {username ? username.charAt(0).toUpperCase() + username.slice(1) : 'there'} 👋</h2>
-            <p className="section-subtitle">Here's your schedule for today (Total DB: {visits.length})</p>
+            <p className="section-subtitle">Here's your schedule for today</p>
             <div className="metrics-grid">
                 <div className="metric-card glass-panel">
                     <div className="metric-icon pending">⏳</div>
