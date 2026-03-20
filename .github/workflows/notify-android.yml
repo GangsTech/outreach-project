@@ -31,12 +31,13 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
-      - name: Build APK (Now With Permissions)
+      - name: Build APK (Fix Global Path)
         run: |
           cd android
-          # Give Permission!
-          chmod +x ./gradlew
-          ./gradlew assembleDebug
+          # FORCE INSTALL GRADLE ENGINE
+          sudo apt-get install -y gradle
+          # BUILD USING GLOBAL GRADLE (Ignores missing wrapper!)
+          gradle assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
