@@ -10,12 +10,18 @@ cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST || []);
 
 let upcomingAlarms = [];
+let notifiedVisits = new Set();
 
 // Listen for messages from the app to update the alarm list
 self.addEventListener('message', (event) => {
     if (event.data && event.data.type === 'SYNC_VISITS') {
         upcomingAlarms = event.data.visits;
         console.log('SW: Alarms Synced', upcomingAlarms.length);
+        // Clean up notifiedVisits that are no longer in the list or are completed
+        const currentIds = new Set(upcomingAlarms.map(v => v.id));
+        for (const id of notifiedVisits) {
+            if (!currentIds.has(id)) notifiedVisits.delete(id);
+        }
     }
 });
 
@@ -28,7 +34,7 @@ setInterval(() => {
     const today = `${year}-${month}-${day}`;
     
     upcomingAlarms.forEach(visit => {
-        if (visit.date === today && visit.status === 'pending') {
+        if (visit.date === today && visit.status === 'pending' && !notifiedVisits.has(visit.id)) {
             const [h, m] = visit.time.split(':').map(Number);
             const visitTime = new Date();
             visitTime.setHours(h, m, 0, 0);
@@ -37,10 +43,11 @@ setInterval(() => {
             const leadTime = visit.reminderMinutes || 60;
 
             if (diff > 0 && diff <= leadTime) {
+                notifiedVisits.add(visit.id);
                 self.registration.showNotification(`🚨 NOTIFY: ${visit.customerName}`, {
                     body: `URGENT: Meeting at ${visit.time} in ${visit.location}!`,
-                    icon: '/logo.png',
-                    badge: '/logo.png',
+                    icon: '/pwa-192x192.png',
+                    badge: '/pwa-192x192.png',
                     tag: `alarm-${visit.id}`,
                     renotify: true,
                     requireInteraction: true,

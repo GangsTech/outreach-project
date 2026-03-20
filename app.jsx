@@ -186,7 +186,27 @@ function App() {
                 setVisits_raw([]);
             }
         });
-        return () => unsubscribe();
+
+        // Listen for ALARM_CLICKED from sw.js
+        const handleSWMessage = (event) => {
+            if (event.data && event.data.type === 'ALARM_CLICKED') {
+                const visitId = event.data.visitId;
+                // Since visits might be loaded later, we can't reliably find it here if app is starting
+                // So we use a ref or check later
+                window._pendingAlarmVisitId = visitId;
+            }
+        };
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.addEventListener('message', handleSWMessage);
+        }
+
+        return () => {
+            unsubscribe();
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.removeEventListener('message', handleSWMessage);
+            }
+        };
     }, []);
 
     useEffect(() => {
@@ -200,6 +220,15 @@ function App() {
             }));
             setVisits_raw(visitsData);
             
+            // If there's a pending alarm from a notification click, trigger it now
+            if (window._pendingAlarmVisitId) {
+                const v = visitsData.find(x => x.id === window._pendingAlarmVisitId);
+                if (v) {
+                    setActiveAlarmVisit(v);
+                    window._pendingAlarmVisitId = null;
+                }
+            }
+
             // Sync with Background Service Worker for alarms outside the app
             if (navigator.serviceWorker && navigator.serviceWorker.controller) {
                 navigator.serviceWorker.controller.postMessage({
@@ -335,8 +364,8 @@ function App() {
                                 
                                 registration.showNotification(`🚨 NOTIFY: ${activeAlarmVisit.customerName}`, {
                                     body: `MEETING ALERT: Starting in ${leadLabel} at ${activeAlarmVisit.location}! TAP TO OPEN.`,
-                                    icon: '/logo.png',
-                                    badge: '/logo.png',
+                                    icon: '/pwa-192x192.png',
+                                    badge: '/pwa-192x192.png',
                                     tag: `alarm-${activeAlarmVisit.id}`,
                                     renotify: true, // Make it ring/vibrate even if already there
                                     requireInteraction: true, // Keep it on the lock screen
