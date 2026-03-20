@@ -271,24 +271,25 @@ function App() {
                         setActiveAlarmVisit(visit);
                         notifiedVisits.current.add(visit.id);
 
-                        // Trigger Background Notification
+                        // Trigger Aggressive Background Notification
                         if (Notification.permission === 'granted' && navigator.serviceWorker) {
                             navigator.serviceWorker.ready.then(registration => {
                                 const leadLabel = leadTime >= 60 
                                     ? `${leadTime / 60} hour${leadTime > 60 ? 's' : ''}` 
                                     : `${leadTime} minutes`;
                                 
-                                registration.showNotification(`🚨 ALARM: Visit with ${visit.customerName}`, {
-                                    body: `Starting in ${leadLabel} at ${visit.location}! Tap to dismiss.`,
-                                    icon: '/pwa-192x192.png',
-                                    badge: '/pwa-192x192.png',
-                                    tag: `visit-${visit.id}`,
-                                    requireInteraction: true,
-                                    vibrate: [500, 110, 500, 110, 450, 110, 200, 110, 170, 40, 450, 110, 200, 110, 170, 40],
-                                    data: { visitId: visit.id },
+                                registration.showNotification(`🚨 NOTIFY: ${activeAlarmVisit.customerName}`, {
+                                    body: `MEETING ALERT: Starting in ${leadLabel} at ${activeAlarmVisit.location}! TAP TO OPEN.`,
+                                    icon: '/logo.png',
+                                    badge: '/logo.png',
+                                    tag: `alarm-${activeAlarmVisit.id}`,
+                                    renotify: true, // Make it ring/vibrate even if already there
+                                    requireInteraction: true, // Keep it on the lock screen
+                                    vibrate: [1000, 500, 1000, 500, 1000, 500, 1000, 500, 1000, 500], // 10s pattern
+                                    data: { visitId: activeAlarmVisit.id },
                                     actions: [
-                                        { action: 'view', title: 'Open App', icon: '📱' },
-                                        { action: 'close', title: 'Dismiss', icon: '❌' }
+                                        { action: 'view', title: 'Open & Speak Alarm', icon: '📢' },
+                                        { action: 'close', title: 'I Got It', icon: '✅' }
                                     ]
                                 });
                             });
