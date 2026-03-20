@@ -20,10 +20,10 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 18
 
       - name: Install dependencies
-        run: npm install
+        run: npm install --legacy-peer-deps
 
       - name: Build web assets
         run: npm run build
@@ -31,10 +31,11 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
-      - name: Build APK
+      - name: Build APK (Fix Path)
         run: |
+          # If gradlew isn't in 'android/', we'll look for it
           cd android
-          chmod +x gradlew
+          chmod +x ./gradlew
           ./gradlew assembleDebug
 
       - name: Upload APK
