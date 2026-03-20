@@ -174,6 +174,21 @@ function App() {
     const { showBanner, isIOS, isInstalled, install, dismiss } = useInstallPrompt();
 
     useEffect(() => {
+        // --- Init Android Notification Channels (Capacitor) ---
+        if (Capacitor.isNativePlatform()) {
+            LocalNotifications.createChannel({
+                id: 'alarm_channel',
+                name: 'App Alarms',
+                description: 'Crucial meeting alarms that ring even when idle',
+                importance: 5, // High importance for heads-up and persistent ring
+                visibility: 1, // Visible on lock screen
+                sound: 'alarm.wav', // If file is provided in res/raw or public
+                vibration: true,
+                lights: true,
+                lightColor: '#ff0000'
+            });
+        }
+
         if ('Notification' in window && Notification.permission !== 'granted') {
             Notification.requestPermission();
         }
@@ -247,24 +262,31 @@ function App() {
     const scheduleNativeAlarms = useCallback(async (vData) => {
         if (!Capacitor.isNativePlatform()) return;
         try {
-            await LocalNotifications.requestPermissions();
+            const status = await LocalNotifications.requestPermissions();
+            if (status.display !== 'granted') return;
+
             const now = new Date();
             const upcoming = vData.filter(v => v.status === 'pending');
             const notifications = upcoming.map(v => {
                 const [h, m] = v.time.split(':').map(Number);
                 const [year, month, day] = v.date.split('-').map(Number);
                 const scheduleDate = new Date(year, month - 1, day, h, m);
-                const leadTime = v.reminderMinutes || 60;
+                const leadTime = v.reminderMinutes || 0; // Use lead time if specified 
                 const alarmTime = new Date(scheduleDate.getTime() - (leadTime * 60 * 1000));
                 
                 if (alarmTime > now) {
                     return {
-                        title: `🚨 NOTIFY: ${v.customerName}`,
-                        body: `MEETING ALERT: Starting in ${v.reminderMinutes || 60} minutes!`,
+                        title: `🚨 NOTIFY ALARM: ${v.customerName}`,
+                        body: `Meeting at ${v.location} (Starting in ${v.reminderMinutes || 0} mins)`,
                         id: Math.floor(Math.random() * 1000000),
                         schedule: { at: alarmTime, allowWhileIdle: true },
                         sound: 'alarm.wav',
-                        extra: { visitId: v.id }
+                        channelId: 'alarm_channel',
+                        extra: { visitId: v.id },
+                        smallIcon: 'ic_launcher', // Use app icon or standard one
+                        vibrationPattern: [0, 1000, 500, 1000, 500, 1000, 500, 1000],
+                        priority: 2, // Max priority
+                        requireInteraction: true // Make it sticky on the screen
                     };
                 }
                 return null;
@@ -560,6 +582,35 @@ function Dashboard({ visits, onUpdateStatus, onEditVisit, onDeleteVisit, usernam
                     <div className="metric-value">{completedVisits.length}</div>
                     <div className="metric-label">Completed</div>
                 </div>
+
+                <div className="metric-card glass-panel" onClick={async () => {
+                    if (!Capacitor.isNativePlatform()) {
+                        alert("🔴 Test this on an actual Android device!");
+                        return;
+                    }
+                    try {
+                        const status = await LocalNotifications.requestPermissions();
+                        if (status.display !== 'granted') return;
+                        
+                        await LocalNotifications.schedule({
+                            notifications: [{
+                                title: "🔔 TEST ALARM (5s)",
+                                body: "Congrats! Your Notify app alarms are working perfectly.",
+                                id: 999,
+                                schedule: { at: new Date(Date.now() + 5000), allowWhileIdle: true },
+                                sound: 'alarm.wav',
+                                channelId: 'alarm_channel',
+                                priority: 2,
+                                requireInteraction: true
+                            }]
+                        });
+                        alert("✅ Scheduled! Lock your screen now and wait 5 seconds.");
+                    } catch (e) { alert("Error: " + e.message); }
+                }} style={{ cursor: 'pointer', border: '1px solid var(--accent, #4287f5)' }}>
+                    <div className="metric-icon">🔔</div>
+                    <div className="metric-value">TEST</div>
+                    <div className="metric-label">Click for 5s Alarm Test</div>
+                </div>
             </div>
             <div className="upcoming-section">
                 <div className="flex-row justify-between items-center mb-sm">
@@ -777,6 +828,9 @@ function AddVisit({ onSave, visitToEdit }) {
                     <span className="reminder-icon">⏰</span>
                     <label>Remind me before</label>
                     <select value={formData.reminderMinutes} onChange={e => setFormData({ ...formData, reminderMinutes: e.target.value })}>
+                        <option value={0}>At time of meeting</option>
+                        <option value={1}>1 minute before</option>
+                        <option value={5}>5 minutes before</option>
                         <option value={15}>15 minutes before</option>
                         <option value={30}>30 minutes before</option>
                         <option value={60}>1 hour before</option>
