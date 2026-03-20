@@ -8,7 +8,7 @@ export default defineConfig({
         react(),
         VitePWA({
             strategies: 'injectManifest',
-            srcDir: '.',
+            srcDir: '.','
             filename: 'sw.js',
             registerType: 'autoUpdate',
             injectRegister: 'auto',
@@ -44,30 +44,6 @@ export default defineConfig({
             }
         })
     ],
-})
-
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import { VitePWA } from 'vite-plugin-pwa'
-
-export default defineConfig({
-    plugins: [
-        react(),
-        VitePWA({
-            strategies: 'injectManifest',
-            srcDir: '.',
-            filename: 'sw.js',
-            registerType: 'autoUpdate',
-            injectRegister: 'auto',
-            manifest: {
-                name: 'Notify',
-                short_name: 'Notify',
-                display: 'standalone',
-                theme_color: '#020617',
-                background_color: '#020617',
-            }
-        })
-    ],
     build: {
         rollupOptions: {
             // This stops Vite from complaining about Capacitor!
@@ -80,4 +56,3 @@ export default defineConfig({
         }
     }
 })
-
