@@ -8,7 +8,7 @@ export default defineConfig({
         react(),
         VitePWA({
             strategies: 'injectManifest',
-            srcDir: '.','
+            srcDir: '.',
             filename: 'sw.js',
             registerType: 'autoUpdate',
             injectRegister: 'auto',
@@ -46,7 +46,6 @@ export default defineConfig({
     ],
     build: {
         rollupOptions: {
-            // This stops Vite from complaining about Capacitor!
             external: [
                 '/@capacitor/core/',
                 '/@capacitor/local-notifications/',
