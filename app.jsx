@@ -510,6 +510,17 @@ function Dashboard({ visits, onUpdateStatus, onEditVisit, onDeleteVisit, usernam
             <h2 className="section-title">Hello, {username ? username.charAt(0).toUpperCase() + username.slice(1) : 'there'} 👋</h2>
             <p className="section-subtitle">Here's your schedule for today</p>
             <div className="metrics-grid">
+                <div className="metric-card glass-panel" onClick={() => {
+                    const synth = window.speechSynthesis;
+                    const utterance = new SpeechSynthesisUtterance('');
+                    utterance.volume = 0;
+                    synth.speak(utterance);
+                    alert("✅ NOTIFY CONNECTED: Alarms will now ring automatically!");
+                }} style={{ cursor: 'pointer', border: '1px solid #4ade80' }}>
+                    <div className="metric-icon">🚀</div>
+                    <div className="metric-value" style={{ fontSize: '1.2rem', color: '#4ade80' }}>CONNECT</div>
+                    <div className="metric-label">Click Once to Enable Alarms</div>
+                </div>
                 <div className="metric-card glass-panel">
                     <div className="metric-icon pending">⏳</div>
                     <div className="metric-value">{pendingVisits.length}</div>
