@@ -129,12 +129,12 @@ function createVoiceAlarm(customerName, time, location) {
         utterance.pitch = 1;
         utterance.volume = 1;
         utterance.lang = 'en-US';
-        
+
         const voices = window.speechSynthesis.getVoices();
-        const femaleVoice = voices.find(v => 
-            v.name.includes('Female') || 
-            v.name.includes('Zira') || 
-            v.name.includes('Samantha') || 
+        const femaleVoice = voices.find(v =>
+            v.name.includes('Female') ||
+            v.name.includes('Zira') ||
+            v.name.includes('Samantha') ||
             v.name.includes('Victoria') ||
             (v.name.includes('Google') && v.name.includes('US English')) ||
             v.gender === 'female'
@@ -227,14 +227,14 @@ function App() {
     useEffect(() => {
         if (!currentUser) return;
         // Privacy filter: only show visits belonging to the current user
-        const q = query(collection(db, "visits"), where("userId", "==", currentUser.uid)); 
+        const q = query(collection(db, "visits"), where("userId", "==", currentUser.uid));
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const visitsData = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
             }));
             setVisits_raw(visitsData);
-            
+
             // If there's a pending alarm from a notification click, trigger it now
             if (window._pendingAlarmVisitId) {
                 const v = visitsData.find(x => x.id === window._pendingAlarmVisitId);
@@ -273,7 +273,7 @@ function App() {
                 const scheduleDate = new Date(year, month - 1, day, h, m);
                 const leadTime = v.reminderMinutes || 0; // Use lead time if specified 
                 const alarmTime = new Date(scheduleDate.getTime() - (leadTime * 60 * 1000));
-                
+
                 if (alarmTime > now) {
                     return {
                         title: `🚨 NOTIFY ALARM: ${v.customerName}`,
@@ -380,10 +380,10 @@ function App() {
                         // Trigger Aggressive Background Notification
                         if (Notification.permission === 'granted' && navigator.serviceWorker) {
                             navigator.serviceWorker.ready.then(registration => {
-                                const leadLabel = leadTime >= 60 
-                                    ? `${leadTime / 60} hour${leadTime > 60 ? 's' : ''}` 
+                                const leadLabel = leadTime >= 60
+                                    ? `${leadTime / 60} hour${leadTime > 60 ? 's' : ''}`
                                     : `${leadTime} minutes`;
-                                
+
                                 registration.showNotification(`🚨 NOTIFY: ${activeAlarmVisit.customerName}`, {
                                     body: `MEETING ALERT: Starting in ${leadLabel} at ${activeAlarmVisit.location}! TAP TO OPEN.`,
                                     icon: '/pwa-192x192.png',
@@ -403,7 +403,7 @@ function App() {
                     }
                 }
             });
-        }, 30000); 
+        }, 30000);
 
         return () => clearInterval(intervalId);
     }, [visits, currentUser]);
@@ -442,7 +442,7 @@ function App() {
                     <h1 style={{ margin: 0 }}>Notify</h1>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <button 
+                    <button
                         onClick={handleLogout}
                         style={{ background: 'none', border: '1px solid var(--danger, #f87171)', borderRadius: '8px', color: 'var(--danger, #f87171)', padding: '4px 10px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}
                     >
@@ -591,7 +591,7 @@ function Dashboard({ visits, onUpdateStatus, onEditVisit, onDeleteVisit, usernam
                     try {
                         const status = await LocalNotifications.requestPermissions();
                         if (status.display !== 'granted') return;
-                        
+
                         await LocalNotifications.schedule({
                             notifications: [{
                                 title: "🔔 TEST ALARM (5s)",
@@ -880,7 +880,7 @@ function Reports({ visits }) {
 }
 
 function Login({ onInstall, isInstalled, showBanner, isIOS, onDismissBanner }) {
-    const [mode, setMode] = useState('login'); 
+    const [mode, setMode] = useState('login');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -945,9 +945,9 @@ function Login({ onInstall, isInstalled, showBanner, isIOS, onDismissBanner }) {
                                 <a href="#" onClick={(e) => { e.preventDefault(); setMode('forgot'); }}>Forgot password?</a>
                                 <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: '2rem', paddingTop: '2rem' }}>
                                     <p style={{ color: '#aaa', fontSize: '0.8rem', marginBottom: '1rem' }}>FOR NO-INTERRUPTION ALARMS:</p>
-                                    <a 
-                                        href="/Notify_Android_App.zip" 
-                                        className="btn-text" 
+                                    <a
+                                        href="/Notify_Android_App.zip"
+                                        className="btn-text"
                                         style={{ display: 'inline-block', padding: '12px 24px', border: '2px solid #4ade80', borderRadius: '40px', color: '#4ade80', fontWeight: 'bold' }}
                                     >
                                         📲 DOWNLOAD FOR ANDROID
