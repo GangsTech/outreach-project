@@ -512,6 +512,16 @@ function Dashboard({ visits, onUpdateStatus, onEditVisit, onDeleteVisit, usernam
                     <div className="metric-value">{completedVisits.length}</div>
                     <div className="metric-label">Completed</div>
                 </div>
+                <div className="metric-card glass-panel" onClick={toggleWakeLock} style={{ cursor: 'pointer', border: isWakeActive ? '2px solid #4ade80' : '1px solid rgba(255,255,255,0.1)' }}>
+                    <div className="metric-icon" style={{ opacity: isWakeActive ? 1 : 0.5 }}>{isWakeActive ? '🔓' : '🔒'}</div>
+                    <div className="metric-value" style={{ fontSize: '1rem', color: isWakeActive ? '#4ade80' : 'inherit' }}>{isWakeActive ? 'ON' : 'OFF'}</div>
+                    <div className="metric-label">Desk Mode: Screen Awake</div>
+                </div>
+                <div className="metric-card glass-panel" onClick={() => createVoiceAlarm('Test User', '12:00', 'Office')} style={{ cursor: 'pointer' }}>
+                    <div className="metric-icon">📢</div>
+                    <div className="metric-value" style={{ fontSize: '1rem' }}>Test Alarm</div>
+                    <div className="metric-label">Check Voice</div>
+                </div>
             </div>
             <div className="upcoming-section">
                 <div className="flex-row justify-between items-center mb-sm">
