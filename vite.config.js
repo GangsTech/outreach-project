@@ -43,4 +43,14 @@ export default defineConfig({
             }
         })
     ],
+    build: {
+        rollupOptions: {
+            external: [
+                '/@capacitor/core/',
+                '/@capacitor/local-notifications/',
+                '@capacitor/core',
+                '@capacitor/local-notifications'
+            ]
+        }
+    }
 })
