@@ -17,9 +17,6 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -31,19 +28,18 @@ jobs:
       - name: Build web assets
         run: npm run build
 
-      - name: Restore Potential Missing Files
+      - name: Force Fix Android Folder
         run: |
+          # Delete potentially broken folders and recreate!
+          rm -rf android
+          npx cap add android
           npx cap sync android
-          # If settings.gradle is still gone, it will be recreated
-          cd android
-          if [ ! -f settings.gradle ]; then
-            echo "include ':app'" > settings.gradle
-          fi
 
-      - name: Build APK
+      - name: Build APK (Self-Healing)
         run: |
           cd android
-          gradle assembleDebug
+          chmod +x ./gradlew
+          ./gradlew assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
