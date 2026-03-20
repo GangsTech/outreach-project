@@ -28,14 +28,20 @@ jobs:
       - name: Build web assets
         run: npm run build
 
-      - name: Force Fix Android Folder
+      - name: Perfect Android Setup
         run: |
-          # Delete potentially broken folders and recreate!
+          # 1. Start Fresh
           rm -rf android
           npx cap add android
+          
+          # 2. Add Our Alarm Settings (Manual Copy)
+          mkdir -p android/app/src/main/res/raw
+          # We will just use standard AndroidManifest for this run
+          
+          # 3. Final Sync
           npx cap sync android
 
-      - name: Build APK (Self-Healing)
+      - name: Build APK (Final Victory)
         run: |
           cd android
           chmod +x ./gradlew
