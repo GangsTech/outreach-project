@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { Capacitor } from '@capacitor/core';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import './app.css'
 import { auth, db } from './firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged, signOut } from 'firebase/auth';
@@ -203,6 +205,51 @@ function App() {
         });
         return () => unsubscribe();
     }, [currentUser]);
+
+    // --- NATIVE ALARM SCHEDULING (Capacitor) ---
+    const scheduleNativeAlarms = useCallback(async (vData) => {
+        if (!Capacitor.isNativePlatform()) return;
+        try {
+            await LocalNotifications.requestPermissions();
+            const now = new Date();
+            const upcoming = vData.filter(v => v.status === 'pending');
+            const notifications = upcoming.map(v => {
+                const [h, m] = v.time.split(':').map(Number);
+                const [year, month, day] = v.date.split('-').map(Number);
+                const scheduleDate = new Date(year, month - 1, day, h, m);
+                const leadTime = v.reminderMinutes || 60;
+                const alarmTime = new Date(scheduleDate.getTime() - (leadTime * 60 * 1000));
+                
+                if (alarmTime > now) {
+                    return {
+                        title: `🚨 NOTIFY: ${v.customerName}`,
+                        body: `MEETING ALERT: Starting in ${v.reminderMinutes || 60} minutes!`,
+                        id: Math.floor(Math.random() * 1000000),
+                        schedule: { at: alarmTime, allowWhileIdle: true },
+                        sound: 'alarm.wav',
+                        extra: { visitId: v.id }
+                    };
+                }
+                return null;
+            }).filter(n => n !== null);
+
+            if (notifications.length > 0) {
+                const pending = await LocalNotifications.getPending();
+                if (pending.notifications.length > 0) {
+                    await LocalNotifications.cancel({ notifications: pending.notifications });
+                }
+                await LocalNotifications.schedule({ notifications });
+            }
+        } catch (err) {
+            console.error('Native Notification scheduling error:', err);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (visits.length > 0) {
+            scheduleNativeAlarms(visits);
+        }
+    }, [visits, scheduleNativeAlarms]);
 
     const handleLogout = async () => {
         await signOut(auth);
@@ -415,6 +462,31 @@ function App() {
 }
 
 function Dashboard({ visits, onUpdateStatus, onEditVisit, onDeleteVisit, username }) {
+    const [wakeLock, setWakeLock] = useState(null);
+    const [isWakeActive, setIsWakeActive] = useState(false);
+
+    const toggleWakeLock = async () => {
+        if (!('wakeLock' in navigator)) {
+            alert("Wake Lock is not supported on this device/browser.");
+            return;
+        }
+        try {
+            if (isWakeActive) {
+                await wakeLock.release();
+                setWakeLock(null);
+                setIsWakeActive(false);
+            } else {
+                const lock = await navigator.wakeLock.request('screen');
+                setWakeLock(lock);
+                setIsWakeActive(true);
+                lock.addEventListener('release', () => {
+                    setIsWakeActive(false);
+                });
+            }
+        } catch (err) {
+            console.error(`${err.name}, ${err.message}`);
+        }
+    };
     const localDate = new Date();
     const year = localDate.getFullYear();
     const month = String(localDate.getMonth() + 1).padStart(2, '0');

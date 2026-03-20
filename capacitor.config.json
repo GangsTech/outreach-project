@@ -1,0 +1,6 @@
+{
+  "appId": "app.notify.gangstech",
+  "appName": "Notify",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}
