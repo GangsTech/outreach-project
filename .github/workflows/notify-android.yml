@@ -17,6 +17,9 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      - name: Setup Gradle (Official Action)
+        uses: gradle/actions/setup-gradle@v3
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -31,12 +34,9 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
-      - name: Build APK (Fix Global Path)
+      - name: Build APK (Now Using Official Gradle)
         run: |
           cd android
-          # FORCE INSTALL GRADLE ENGINE
-          sudo apt-get install -y gradle
-          # BUILD USING GLOBAL GRADLE (Ignores missing wrapper!)
           gradle assembleDebug
 
       - name: Upload APK
