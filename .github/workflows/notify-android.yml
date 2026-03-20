@@ -17,7 +17,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Setup Gradle (Official Action)
+      - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
       - name: Setup Node
@@ -31,10 +31,16 @@ jobs:
       - name: Build web assets
         run: npm run build
 
-      - name: Sync Capacitor
-        run: npx cap sync android
+      - name: Restore Potential Missing Files
+        run: |
+          npx cap sync android
+          # If settings.gradle is still gone, it will be recreated
+          cd android
+          if [ ! -f settings.gradle ]; then
+            echo "include ':app'" > settings.gradle
+          fi
 
-      - name: Build APK (Now Using Official Gradle)
+      - name: Build APK
         run: |
           cd android
           gradle assembleDebug
