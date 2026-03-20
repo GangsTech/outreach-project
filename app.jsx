@@ -330,7 +330,10 @@ function App() {
                 <InstallBanner isIOS={isIOS} onInstall={install} onDismiss={dismiss} />
             )}
             <header className="app-header glass-panel">
-                <h1>LandVMS</h1>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <img src="/logo.png" alt="Notify Logo" style={{ width: '40px', height: '40px', borderRadius: '50%' }} />
+                    <h1 style={{ margin: 0 }}>Notify</h1>
+                </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <button 
                         onClick={handleLogout}
@@ -739,10 +742,10 @@ function Login({ onInstall, isInstalled, showBanner, isIOS, onDismissBanner }) {
             <div className="glass-panel animate-fade-in" style={{ width: '100%', maxWidth: '400px', padding: '2rem' }}>
                 <div className="text-center mb-xl">
                     <div style={{ width: '110px', height: '110px', borderRadius: '50%', margin: '0 auto 16px', overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.5), 0 0 0 3px rgba(255,255,255,0.15)', border: '2px solid rgba(255,255,255,0.2)' }}>
-                        <img src="/logo.png" alt="LandVMS Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <img src="/logo.png" alt="Notify Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
-                    <h1 style={{ fontSize: '2rem', letterSpacing: '2px', marginBottom: '4px' }}>LANDVMS</h1>
-                    <p style={{ fontSize: '0.75rem', letterSpacing: '2px', textTransform: 'uppercase', opacity: 0.6 }}>Land Visit Management</p>
+                    <h1 style={{ fontSize: '2rem', letterSpacing: '2px', marginBottom: '4px' }}>NOTIFY</h1>
+                    <p style={{ fontSize: '0.75rem', letterSpacing: '2px', textTransform: 'uppercase', opacity: 0.6 }}>ALERTS & NOTIFICATIONS</p>
                 </div>
                 {error && <div className="badge warning" style={{ display: 'block', textAlign: 'center', marginBottom: '1rem' }}>{error}</div>}
                 {success && <div className="badge success" style={{ display: 'block', textAlign: 'center', marginBottom: '1rem' }}>{success}</div>}

@@ -14,9 +14,9 @@ export default defineConfig({
             injectRegister: 'auto',
             includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'pwa-192x192.png', 'pwa-512x512.png'],
             manifest: {
-                name: 'LandVMS Premium',
-                short_name: 'LandVMS',
-                description: 'Smart Land Visit Management & Reminder System',
+                name: 'Notify',
+                short_name: 'Notify',
+                description: 'Smart Smart Reminders & Visitor Notifications',
                 theme_color: '#020617',
                 background_color: '#020617',
                 display: 'standalone',
