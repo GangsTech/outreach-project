@@ -199,6 +199,14 @@ function App() {
                 ...doc.data()
             }));
             setVisits_raw(visitsData);
+            
+            // Sync with Background Service Worker for alarms outside the app
+            if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({
+                    type: 'SYNC_VISITS',
+                    visits: visitsData
+                });
+            }
         }, (err) => {
             console.error("Firestore read error:", err);
             alert("Error reading appointments: " + err.message);
