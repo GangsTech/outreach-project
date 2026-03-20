@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { Capacitor } from '@capacitor/core';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import './app.css'
 import { auth, db } from './firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged, signOut } from 'firebase/auth';
@@ -172,6 +174,21 @@ function App() {
     const { showBanner, isIOS, isInstalled, install, dismiss } = useInstallPrompt();
 
     useEffect(() => {
+        // --- Init Android Notification Channels (Capacitor) ---
+        if (Capacitor.isNativePlatform()) {
+            LocalNotifications.createChannel({
+                id: 'alarm_channel',
+                name: 'App Alarms',
+                description: 'Crucial meeting alarms that ring even when idle',
+                importance: 5, // High importance for heads-up and persistent ring
+                visibility: 1, // Visible on lock screen
+                sound: 'alarm.wav', // If file is provided in res/raw or public
+                vibration: true,
+                lights: true,
+                lightColor: '#ff0000'
+            });
+        }
+
         if ('Notification' in window && Notification.permission !== 'granted') {
             Notification.requestPermission();
         }
@@ -184,7 +201,27 @@ function App() {
                 setVisits_raw([]);
             }
         });
-        return () => unsubscribe();
+
+        // Listen for ALARM_CLICKED from sw.js
+        const handleSWMessage = (event) => {
+            if (event.data && event.data.type === 'ALARM_CLICKED') {
+                const visitId = event.data.visitId;
+                // Since visits might be loaded later, we can't reliably find it here if app is starting
+                // So we use a ref or check later
+                window._pendingAlarmVisitId = visitId;
+            }
+        };
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.addEventListener('message', handleSWMessage);
+        }
+
+        return () => {
+            unsubscribe();
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.removeEventListener('message', handleSWMessage);
+            }
+        };
     }, []);
 
     useEffect(() => {
@@ -197,12 +234,81 @@ function App() {
                 ...doc.data()
             }));
             setVisits_raw(visitsData);
+            
+            // If there's a pending alarm from a notification click, trigger it now
+            if (window._pendingAlarmVisitId) {
+                const v = visitsData.find(x => x.id === window._pendingAlarmVisitId);
+                if (v) {
+                    setActiveAlarmVisit(v);
+                    window._pendingAlarmVisitId = null;
+                }
+            }
+
+            // Sync with Background Service Worker for alarms outside the app
+            if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({
+                    type: 'SYNC_VISITS',
+                    visits: visitsData
+                });
+            }
         }, (err) => {
             console.error("Firestore read error:", err);
             alert("Error reading appointments: " + err.message);
         });
         return () => unsubscribe();
     }, [currentUser]);
+
+    // --- NATIVE ALARM SCHEDULING (Capacitor) ---
+    const scheduleNativeAlarms = useCallback(async (vData) => {
+        if (!Capacitor.isNativePlatform()) return;
+        try {
+            const status = await LocalNotifications.requestPermissions();
+            if (status.display !== 'granted') return;
+
+            const now = new Date();
+            const upcoming = vData.filter(v => v.status === 'pending');
+            const notifications = upcoming.map(v => {
+                const [h, m] = v.time.split(':').map(Number);
+                const [year, month, day] = v.date.split('-').map(Number);
+                const scheduleDate = new Date(year, month - 1, day, h, m);
+                const leadTime = v.reminderMinutes || 0; // Use lead time if specified 
+                const alarmTime = new Date(scheduleDate.getTime() - (leadTime * 60 * 1000));
+                
+                if (alarmTime > now) {
+                    return {
+                        title: `🚨 NOTIFY ALARM: ${v.customerName}`,
+                        body: `Meeting at ${v.location} (Starting in ${v.reminderMinutes || 0} mins)`,
+                        id: Math.floor(Math.random() * 1000000),
+                        schedule: { at: alarmTime, allowWhileIdle: true },
+                        sound: 'alarm.wav',
+                        channelId: 'alarm_channel',
+                        extra: { visitId: v.id },
+                        smallIcon: 'ic_launcher', // Use app icon or standard one
+                        vibrationPattern: [0, 1000, 500, 1000, 500, 1000, 500, 1000],
+                        priority: 2, // Max priority
+                        requireInteraction: true // Make it sticky on the screen
+                    };
+                }
+                return null;
+            }).filter(n => n !== null);
+
+            if (notifications.length > 0) {
+                const pending = await LocalNotifications.getPending();
+                if (pending.notifications.length > 0) {
+                    await LocalNotifications.cancel({ notifications: pending.notifications });
+                }
+                await LocalNotifications.schedule({ notifications });
+            }
+        } catch (err) {
+            console.error('Native Notification scheduling error:', err);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (visits.length > 0) {
+            scheduleNativeAlarms(visits);
+        }
+    }, [visits, scheduleNativeAlarms]);
 
     const handleLogout = async () => {
         await signOut(auth);
@@ -280,8 +386,8 @@ function App() {
                                 
                                 registration.showNotification(`🚨 NOTIFY: ${activeAlarmVisit.customerName}`, {
                                     body: `MEETING ALERT: Starting in ${leadLabel} at ${activeAlarmVisit.location}! TAP TO OPEN.`,
-                                    icon: '/logo.png',
-                                    badge: '/logo.png',
+                                    icon: '/pwa-192x192.png',
+                                    badge: '/pwa-192x192.png',
                                     tag: `alarm-${activeAlarmVisit.id}`,
                                     renotify: true, // Make it ring/vibrate even if already there
                                     requireInteraction: true, // Keep it on the lock screen
@@ -415,6 +521,31 @@ function App() {
 }
 
 function Dashboard({ visits, onUpdateStatus, onEditVisit, onDeleteVisit, username }) {
+    const [wakeLock, setWakeLock] = useState(null);
+    const [isWakeActive, setIsWakeActive] = useState(false);
+
+    const toggleWakeLock = async () => {
+        if (!('wakeLock' in navigator)) {
+            alert("Wake Lock is not supported on this device/browser.");
+            return;
+        }
+        try {
+            if (isWakeActive) {
+                await wakeLock.release();
+                setWakeLock(null);
+                setIsWakeActive(false);
+            } else {
+                const lock = await navigator.wakeLock.request('screen');
+                setWakeLock(lock);
+                setIsWakeActive(true);
+                lock.addEventListener('release', () => {
+                    setIsWakeActive(false);
+                });
+            }
+        } catch (err) {
+            console.error(`${err.name}, ${err.message}`);
+        }
+    };
     const localDate = new Date();
     const year = localDate.getFullYear();
     const month = String(localDate.getMonth() + 1).padStart(2, '0');
@@ -430,6 +561,17 @@ function Dashboard({ visits, onUpdateStatus, onEditVisit, onDeleteVisit, usernam
             <h2 className="section-title">Hello, {username ? username.charAt(0).toUpperCase() + username.slice(1) : 'there'} 👋</h2>
             <p className="section-subtitle">Here's your schedule for today</p>
             <div className="metrics-grid">
+                <div className="metric-card glass-panel" onClick={() => {
+                    const synth = window.speechSynthesis;
+                    const utterance = new SpeechSynthesisUtterance('');
+                    utterance.volume = 0;
+                    synth.speak(utterance);
+                    alert("✅ NOTIFY CONNECTED: Alarms will now ring automatically!");
+                }} style={{ cursor: 'pointer', border: '1px solid #4ade80' }}>
+                    <div className="metric-icon">🚀</div>
+                    <div className="metric-value" style={{ fontSize: '1.2rem', color: '#4ade80' }}>CONNECT</div>
+                    <div className="metric-label">Click Once to Enable Alarms</div>
+                </div>
                 <div className="metric-card glass-panel">
                     <div className="metric-icon pending">⏳</div>
                     <div className="metric-value">{pendingVisits.length}</div>
@@ -439,6 +581,35 @@ function Dashboard({ visits, onUpdateStatus, onEditVisit, onDeleteVisit, usernam
                     <div className="metric-icon completed">✅</div>
                     <div className="metric-value">{completedVisits.length}</div>
                     <div className="metric-label">Completed</div>
+                </div>
+
+                <div className="metric-card glass-panel" onClick={async () => {
+                    if (!Capacitor.isNativePlatform()) {
+                        alert("🔴 Test this on an actual Android device!");
+                        return;
+                    }
+                    try {
+                        const status = await LocalNotifications.requestPermissions();
+                        if (status.display !== 'granted') return;
+                        
+                        await LocalNotifications.schedule({
+                            notifications: [{
+                                title: "🔔 TEST ALARM (5s)",
+                                body: "Congrats! Your Notify app alarms are working perfectly.",
+                                id: 999,
+                                schedule: { at: new Date(Date.now() + 5000), allowWhileIdle: true },
+                                sound: 'alarm.wav',
+                                channelId: 'alarm_channel',
+                                priority: 2,
+                                requireInteraction: true
+                            }]
+                        });
+                        alert("✅ Scheduled! Lock your screen now and wait 5 seconds.");
+                    } catch (e) { alert("Error: " + e.message); }
+                }} style={{ cursor: 'pointer', border: '1px solid var(--accent, #4287f5)' }}>
+                    <div className="metric-icon">🔔</div>
+                    <div className="metric-value">TEST</div>
+                    <div className="metric-label">Click for 5s Alarm Test</div>
                 </div>
             </div>
             <div className="upcoming-section">
@@ -657,6 +828,9 @@ function AddVisit({ onSave, visitToEdit }) {
                     <span className="reminder-icon">⏰</span>
                     <label>Remind me before</label>
                     <select value={formData.reminderMinutes} onChange={e => setFormData({ ...formData, reminderMinutes: e.target.value })}>
+                        <option value={0}>At time of meeting</option>
+                        <option value={1}>1 minute before</option>
+                        <option value={5}>5 minutes before</option>
                         <option value={15}>15 minutes before</option>
                         <option value={30}>30 minutes before</option>
                         <option value={60}>1 hour before</option>
@@ -769,6 +943,16 @@ function Login({ onInstall, isInstalled, showBanner, isIOS, onDismissBanner }) {
                             <>
                                 <a href="#" onClick={(e) => { e.preventDefault(); setMode('signup'); }} style={{ display: 'block', marginBottom: '0.5rem' }}>New user? Sign up</a>
                                 <a href="#" onClick={(e) => { e.preventDefault(); setMode('forgot'); }}>Forgot password?</a>
+                                <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: '2rem', paddingTop: '2rem' }}>
+                                    <p style={{ color: '#aaa', fontSize: '0.8rem', marginBottom: '1rem' }}>FOR NO-INTERRUPTION ALARMS:</p>
+                                    <a 
+                                        href="/Notify_Android_App.zip" 
+                                        className="btn-text" 
+                                        style={{ display: 'inline-block', padding: '12px 24px', border: '2px solid #4ade80', borderRadius: '40px', color: '#4ade80', fontWeight: 'bold' }}
+                                    >
+                                        📲 DOWNLOAD FOR ANDROID
+                                    </a>
+                                </div>
                             </>
                         ) : (
                             <a href="#" onClick={(e) => { e.preventDefault(); setMode('login'); }}>← Back to Login</a>
