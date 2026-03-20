@@ -860,6 +860,16 @@ function Login({ onInstall, isInstalled, showBanner, isIOS, onDismissBanner }) {
                             <>
                                 <a href="#" onClick={(e) => { e.preventDefault(); setMode('signup'); }} style={{ display: 'block', marginBottom: '0.5rem' }}>New user? Sign up</a>
                                 <a href="#" onClick={(e) => { e.preventDefault(); setMode('forgot'); }}>Forgot password?</a>
+                                <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: '2rem', paddingTop: '2rem' }}>
+                                    <p style={{ color: '#aaa', fontSize: '0.8rem', marginBottom: '1rem' }}>FOR NO-INTERRUPTION ALARMS:</p>
+                                    <a 
+                                        href="/Notify_Android_App.zip" 
+                                        className="btn-text" 
+                                        style={{ display: 'inline-block', padding: '12px 24px', border: '2px solid #4ade80', borderRadius: '40px', color: '#4ade80', fontWeight: 'bold' }}
+                                    >
+                                        📲 DOWNLOAD FOR ANDROID
+                                    </a>
+                                </div>
                             </>
                         ) : (
                             <a href="#" onClick={(e) => { e.preventDefault(); setMode('login'); }}>← Back to Login</a>
