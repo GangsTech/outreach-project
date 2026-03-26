@@ -104,61 +104,90 @@ function InstallBanner({ isIOS, onInstall, onDismiss }) {
     );
 }
 
-// --- Voice Speech Alarm via Web Speech API ---
-function createVoiceAlarm(customerName, time, location) {
-    if (!('speechSynthesis' in window)) return null;
+// Base64 1-second silent WAV to trick mobile OS into never sleeping the background tab
+const SILENT_AUDIO = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
 
+window._enableImmortality = () => {
+    if (window._isImmortal) return;
+    try {
+        const audio = new Audio(SILENT_AUDIO);
+        audio.loop = true;
+        // The play() promise might throw if blocked, but usually works on click.
+        audio.play().then(() => {
+            window._isImmortal = true;
+            console.log("Audio immortality activated.");
+        }).catch(err => console.log("Audio blocked:", err));
+
+        if ('wakeLock' in navigator) {
+            navigator.wakeLock.request('screen').catch(() => {});
+        }
+    } catch(e) {}
+};
+
+// --- Aggressive Voice + Siren Alarm via Web Speech & Audio API ---
+function createVoiceAlarm(customerName, time, location) {
     let stopped = false;
     let loopTimeout = null;
+    let sirenCtx = null;
+    let sirenOsc = null;
+    let sirenInterval = null;
 
-    function formatTime(t) {
-        try {
-            const [h, m] = t.split(':').map(Number);
-            const ampm = h >= 12 ? 'PM' : 'AM';
-            const hour = h % 12 || 12;
-            return `${hour}:${m.toString().padStart(2, '0')} ${ampm}`;
-        } catch { return t; }
-    }
+    // Start loud siren
+    try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) {
+            sirenCtx = new AudioContext();
+            sirenOsc = sirenCtx.createOscillator();
+            const gain = sirenCtx.createGain();
+            sirenOsc.connect(gain);
+            gain.connect(sirenCtx.destination);
+            sirenOsc.type = 'square';
+            gain.gain.value = 1.0; // Max volume
 
-    const message = `Your meeting with ${customerName} is scheduled at ${formatTime(time)} in ${location}`;
+            let freq = 400;
+            sirenOsc.frequency.setValueAtTime(freq, sirenCtx.currentTime);
+            sirenInterval = setInterval(() => {
+                 freq = freq === 400 ? 800 : 400;
+                 if(sirenOsc) sirenOsc.frequency.setValueAtTime(freq, sirenCtx.currentTime);
+            }, 400);
+            sirenOsc.start();
+        }
+    } catch(e) { console.error("Siren failed", e); }
+
+    const message = `Wake up! Emergency Alarm! You have a meeting scheduled. Please check your screen! Your meeting with ${customerName} as scheduled in ${time} in the plot ${location}`;
 
     function speak() {
         if (stopped) return;
+        if (!('speechSynthesis' in window)) return;
+        
         const utterance = new SpeechSynthesisUtterance(message);
         utterance.rate = 0.9;
-        utterance.pitch = 1;
+        utterance.pitch = 1.2;
         utterance.volume = 1;
-        utterance.lang = 'en-US';
         
-        const voices = window.speechSynthesis.getVoices();
-        const femaleVoice = voices.find(v => 
-            v.name.includes('Female') || 
-            v.name.includes('Zira') || 
-            v.name.includes('Samantha') || 
-            v.name.includes('Victoria') ||
-            (v.name.includes('Google') && v.name.includes('US English')) ||
-            v.gender === 'female'
-        );
-        if (femaleVoice) {
-            utterance.voice = femaleVoice;
-        }
-
         utterance.onend = () => {
-            if (!stopped) {
-                loopTimeout = setTimeout(speak, 5000); // repeat every 5 seconds
-            }
+            if (!stopped) loopTimeout = setTimeout(speak, 3000); 
         };
         window.speechSynthesis.cancel();
         window.speechSynthesis.speak(utterance);
     }
-
     speak();
 
     return {
         stop() {
             stopped = true;
             clearTimeout(loopTimeout);
-            window.speechSynthesis.cancel();
+            if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+            
+            // Stop siren
+            if (sirenInterval) clearInterval(sirenInterval);
+            if (sirenOsc) {
+                try { sirenOsc.stop(); } catch(e){}
+                sirenOsc = null;
+            }
+            if (sirenCtx && sirenCtx.state !== 'closed') {
+                sirenCtx.close();
+            }
         }
     };
 }
@@ -437,9 +466,17 @@ function App() {
                 <InstallBanner isIOS={isIOS} onInstall={install} onDismiss={dismiss} />
             )}
             <header className="app-header glass-panel">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <img src="/logo.png" alt="Notify Logo" style={{ width: '40px', height: '40px', borderRadius: '50%' }} />
-                    <h1 style={{ margin: 0 }}>Notify</h1>
+                <div className="flex-row items-center gap-sm">
+                    <div className="text-logo" style={{ 
+                        fontFamily: "'Outfit', sans-serif", 
+                        fontWeight: '900', 
+                        fontSize: '1.8rem', 
+                        letterSpacing: '-1.5px',
+                        background: 'linear-gradient(135deg, #ffffff, #666666)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        textTransform: 'uppercase'
+                    }}>Notify</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <button 
@@ -563,10 +600,13 @@ function Dashboard({ visits, onUpdateStatus, onEditVisit, onDeleteVisit, usernam
             <div className="metrics-grid">
                 <div className="metric-card glass-panel" onClick={() => {
                     const synth = window.speechSynthesis;
-                    const utterance = new SpeechSynthesisUtterance('');
-                    utterance.volume = 0;
-                    synth.speak(utterance);
-                    alert("✅ NOTIFY CONNECTED: Alarms will now ring automatically!");
+                    if (synth) {
+                        const utterance = new SpeechSynthesisUtterance('');
+                        utterance.volume = 0;
+                        synth.speak(utterance);
+                    }
+                    if (window._enableImmortality) window._enableImmortality();
+                    alert("✅ NOTIFY CONNECTED: Alarms will now ring automatically even if the phone is asleep on the table!");
                 }} style={{ cursor: 'pointer', border: '1px solid #4ade80' }}>
                     <div className="metric-icon">🚀</div>
                     <div className="metric-value" style={{ fontSize: '1.2rem', color: '#4ade80' }}>CONNECT</div>
@@ -914,13 +954,37 @@ function Login({ onInstall, isInstalled, showBanner, isIOS, onDismissBanner }) {
                     <button className="btn-primary" style={{ width: '100%', marginTop: '10px' }}>INSTALL NOW</button>
                 </div>
             )}
-            <div className="glass-panel animate-fade-in" style={{ width: '100%', maxWidth: '400px', padding: '2rem' }}>
+            <div className="glass-panel animate-fade-in" style={{ width: '100%', maxWidth: '400px', padding: '3rem 2rem' }}>
                 <div className="text-center mb-xl">
-                    <div style={{ width: '110px', height: '110px', borderRadius: '50%', margin: '0 auto 16px', overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.5), 0 0 0 3px rgba(255,255,255,0.15)', border: '2px solid rgba(255,255,255,0.2)' }}>
-                        <img src="/logo.png" alt="Notify Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    </div>
-                    <h1 style={{ fontSize: '2rem', letterSpacing: '2px', marginBottom: '4px' }}>NOTIFY</h1>
-                    <p style={{ fontSize: '0.75rem', letterSpacing: '2px', textTransform: 'uppercase', opacity: 0.6 }}>ALERTS & NOTIFICATIONS</p>
+                    <div style={{ 
+                        width: '80px', 
+                        height: '80px', 
+                        borderRadius: '24px', 
+                        margin: '0 auto 24px', 
+                        background: 'linear-gradient(135deg, #ffffff, #888888)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '2.5rem',
+                        color: '#000000',
+                        boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+                        fontWeight: '900'
+                    }}>N</div>
+                    <h1 style={{ 
+                        fontSize: '2.2rem', 
+                        letterSpacing: '-1px', 
+                        marginBottom: '8px',
+                        fontFamily: "'Outfit', sans-serif",
+                        fontWeight: '800',
+                        textTransform: 'uppercase'
+                    }}>Notify</h1>
+                    <p style={{ 
+                        fontSize: '0.8rem', 
+                        letterSpacing: '3px', 
+                        textTransform: 'uppercase', 
+                        color: 'var(--text-muted)',
+                        fontWeight: '500'
+                    }}>Management Console</p>
                 </div>
                 {error && <div className="badge warning" style={{ display: 'block', textAlign: 'center', marginBottom: '1rem' }}>{error}</div>}
                 {success && <div className="badge success" style={{ display: 'block', textAlign: 'center', marginBottom: '1rem' }}>{success}</div>}
@@ -944,11 +1008,11 @@ function Login({ onInstall, isInstalled, showBanner, isIOS, onDismissBanner }) {
                                 <a href="#" onClick={(e) => { e.preventDefault(); setMode('signup'); }} style={{ display: 'block', marginBottom: '0.5rem' }}>New user? Sign up</a>
                                 <a href="#" onClick={(e) => { e.preventDefault(); setMode('forgot'); }}>Forgot password?</a>
                                 <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: '2rem', paddingTop: '2rem' }}>
-                                    <p style={{ color: '#aaa', fontSize: '0.8rem', marginBottom: '1rem' }}>FOR NO-INTERRUPTION ALARMS:</p>
+                                    <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '1.2rem', letterSpacing: '1px' }}>FOR NO-INTERRUPTION ALARMS:</p>
                                     <a 
                                         href="/Notify_Android_App.zip" 
-                                        className="btn-text" 
-                                        style={{ display: 'inline-block', padding: '12px 24px', border: '2px solid #4ade80', borderRadius: '40px', color: '#4ade80', fontWeight: 'bold' }}
+                                        className="btn-primary" 
+                                        style={{ display: 'inline-block', width: '100%', textDecoration: 'none', background: 'linear-gradient(135deg, #111111, #333333)', border: '1px solid #444', color: '#fff' }}
                                     >
                                         📲 DOWNLOAD FOR ANDROID
                                     </a>

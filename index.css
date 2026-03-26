@@ -1,30 +1,30 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap');
 
 :root {
-    /* ── Premium Deep Violet/Navy Theme ── */
+    /* ── World-Class Monochrome Black & White Theme ── */
     --primary: #ffffff;
-    --primary-light: #e0e7ff;
-    --primary-dark: #a5b4fc;
-    --primary-glow: rgba(129, 140, 248, 0.4);
+    --primary-light: #f8fafc;
+    --primary-dark: #cbd5e1;
+    --primary-glow: rgba(255, 255, 255, 0.15);
 
-    --secondary: #c7d2fe;
-    --secondary-light: #e0e7ff;
-    --secondary-glow: rgba(199, 210, 254, 0.3);
+    --secondary: #e2e8f0;
+    --secondary-light: #f1f5f9;
+    --secondary-glow: rgba(255, 255, 255, 0.05);
 
-    --accent: #818cf8;
+    --accent: #94a3b8;
     --danger: #ef4444;
 
-    --bg-color: #0d0f1a; /* Deep dark navy */
-    --surface: #1e1b4b; /* Deep violet */
+    --bg-color: #000000; /* Pure Black for ultimate premium feel */
+    --surface: #0a0a0a; /* Deep charcoal surface */
 
-    --text-main: #f8fafc;
-    --text-muted: #94a3b8;
+    --text-main: #ffffff;
+    --text-muted: #64748b;
 
-    /* Glassmorphism — tint of purple */
-    --glass-bg: rgba(30, 27, 75, 0.4);
-    --glass-border: rgba(99, 102, 241, 0.2);
-    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
-    --glass-highlight: inset 0 1px 1px rgba(255, 255, 255, 0.05);
+    /* High-End Glassmorphism — sharp and minimalist */
+    --glass-bg: rgba(255, 255, 255, 0.02);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-shadow: 0 12px 64px 0 rgba(0, 0, 0, 0.8);
+    --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 
     /* Layout & Spacing */
     --border-radius-sm: 8px;
@@ -54,8 +54,9 @@
 body {
     font-family: 'Inter', sans-serif;
     background-color: var(--bg-color);
-    background-image: radial-gradient(circle at top right, var(--surface) 0%, transparent 40%),
-                      radial-gradient(circle at bottom left, #312e81 0%, transparent 40%);
+    background-image: 
+        radial-gradient(circle at top left, #111111 0%, transparent 40%),
+        radial-gradient(circle at bottom right, #050505 0%, transparent 40%);
     color: var(--text-main);
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
