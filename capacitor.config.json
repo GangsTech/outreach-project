@@ -4,10 +4,6 @@
   "webDir": "dist",
   "bundledWebRuntime": false,
   "plugins": {
-    "LocalNotifications": {
-      "smallIcon": "ic_launcher_round",
-      "iconColor": "#4ade80",
-      "sound": "alarm.wav"
-    }
+    "LocalNotifications": {}
   }
 }
